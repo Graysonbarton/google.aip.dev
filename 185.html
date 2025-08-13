@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en-US" class="glue-flexbox">
   <head>
-    <title>AIP-127: HTTP and gRPC Transcoding</title>
+    <title>AIP-185: API Versioning</title>
     <meta charset='utf-8'>
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width,maximum-scale=2">
@@ -261,7 +261,7 @@
         Enumerations
       </a>
     </li>
-    <li class="nav-item nav-item-active">
+    <li class="nav-item">
       <a href="/127">
         <span class="aip-number">127</span>
         HTTP and gRPC Transcoding
@@ -489,7 +489,7 @@
         External software dependencies
       </a>
     </li>
-    <li class="nav-item">
+    <li class="nav-item nav-item-active">
       <a href="/185">
         <span class="aip-number">185</span>
         API Versioning
@@ -627,22 +627,22 @@
           
 <aside id="aip-sidebar" class="docs-component-sidebar">
   <table id="aip-summary">
-    <tr><th colspan="2">HTTP and gRPC Transcoding</th></tr>
-    <tr><td>Number</td><td>127</td></tr>
-    <tr><td>Permalink</td><td><a href="https://google.aip.dev/127">google.aip.dev/127</a></td></tr>
+    <tr><th colspan="2">API Versioning</th></tr>
+    <tr><td>Number</td><td>185</td></tr>
+    <tr><td>Permalink</td><td><a href="https://google.aip.dev/185">google.aip.dev/185</a></td></tr>
     <tr><td>State</td><td>Approved</td></tr>
-    <tr><td>Created</td><td>2019-08-22</td></tr>
-    <tr><td>Updated</td><td>2019-08-22</td></tr>
+    <tr><td>Created</td><td>2024-10-22</td></tr>
+    <tr><td>Updated</td><td>2024-10-22</td></tr>
   </table>
 
   <section id="aip-toc" class="docs-component-sidebar-toc">
     <div class="toc"><span class="toctitle">Contents</span><ul>
 <li><a href="#guidance">Guidance</a><ul>
-<li><a href="#http-method-and-path">HTTP method and path</a></li>
-<li><a href="#multiple-uri-bindings">Multiple URI bindings</a></li>
+<li><a href="#channel-based-versioning">Channel-based versioning</a></li>
+<li><a href="#release-based-versioning">Release-based versioning</a></li>
+<li><a href="#visibility-based-versioning">Visibility-based versioning</a></li>
 </ul>
 </li>
-<li><a href="#changelog">Changelog</a></li>
 </ul>
 </div>
 
@@ -651,8 +651,8 @@
   <section class="docs-component-sidebar-actions">
     <ul>
       <li><a href="https://github.com/aip-dev/google.aip.dev/issues/">File Bug</a></li>
-      <li><a href="https://github.com/aip-dev/google.aip.dev/blob/master/aip/general/0127.md">View source</a></li>
-      <li><a href="https://github.com/aip-dev/google.aip.dev/edit/master/aip/general/0127.md">Edit this page</a></li>
+      <li><a href="https://github.com/aip-dev/google.aip.dev/blob/master/aip/general/0185.md">View source</a></li>
+      <li><a href="https://github.com/aip-dev/google.aip.dev/edit/master/aip/general/0185.md">Edit this page</a></li>
     </ul>
   </section>
 </aside>
@@ -677,138 +677,145 @@
       
       <li class="glue-breadcrumbs__item glue-breadcrumbs__item--active"
           aria-level="3">
-        HTTP and gRPC Transcoding
+        API Versioning
       </li>
     </ol>
   </nav>
 </section>
   
-  <h4 class="aip-number">AIP-127</h4>
-  <h1 id="http-and-grpc-transcoding">HTTP and gRPC Transcoding</h1>
-<p>APIs that follow <a href="/121">resource-oriented design</a> are defined using
-<a href="https://en.wikipedia.org/wiki/Remote_procedure_call">RPCs</a>, but the resource-oriented design framework allows them to also be
-presented as APIs that largely follow REST/JSON conventions. This is important
-in order to help developers use their existing knowledge: over 80% of the
-public APIs available follow most REST conventions, and developers are
-accustomed to that pattern.</p>
+  <h4 class="aip-number">AIP-185</h4>
+  <h1 id="api-versioning">API Versioning</h1>
+<p>This topic describes the versioning strategies used by Google APIs. In
+general, these strategies apply to all Google-managed services.</p>
 <h2 id="guidance">Guidance</h2>
-<p>APIs <strong>must</strong> provide HTTP definitions for each RPC that they define, except
-for bi-directional streaming RPCs, which can not be natively supported using
-HTTP/1.1. When providing a bi-directional streaming method, an API <strong>should</strong>
-also offer an alternative method that does not rely on bi-directional
-streaming.</p>
-<h3 id="http-method-and-path">HTTP method and path</h3>
-<p>When using protocol buffers, each RPC <strong>must</strong> define the HTTP method and path
-using the <code>google.api.http</code> annotation:</p>
-<div class="highlight language-proto"><pre><span></span><code><span class="k">rpc</span> <span class="n">CreateBook</span><span class="p">(</span><span class="n">CreateBookRequest</span><span class="p">)</span> <span class="k">returns</span> <span class="p">(</span><span class="n">Book</span><span class="p">)</span> <span class="p">{</span>
-  <span class="k">option</span> <span class="p">(</span><span class="n">google.api.http</span><span class="p">)</span> <span class="o">=</span> <span class="p">{</span>
-    <span class="n">post</span><span class="o">:</span> <span class="s">&quot;/v1/{parent=publishers/*}/books&quot;</span>
-    <span class="n">body</span><span class="o">:</span> <span class="s">&quot;book&quot;</span>
-  <span class="p">};</span>
-<span class="p">}</span>
-
-<span class="kd">message</span> <span class="nc">CreateBookRequest</span> <span class="p">{</span>
-  <span class="c1">// The publisher who will publish this book.</span>
-  <span class="c1">// When using HTTP/JSON, this field is automatically populated based</span>
-  <span class="c1">// on the URI, because of the `{parent=publishers/*}` syntax.</span>
-  <span class="kt">string</span> <span class="na">parent</span> <span class="o">=</span> <span class="mi">1</span> <span class="p">[</span>
-    <span class="p">(</span><span class="n">google.api.field_behavior</span><span class="p">)</span> <span class="o">=</span> <span class="n">REQUIRED</span><span class="p">,</span>
-    <span class="p">(</span><span class="n">google.api.resource_reference</span><span class="p">)</span> <span class="o">=</span> <span class="p">{</span>
-      <span class="n">child_type</span><span class="o">:</span> <span class="s">&quot;library.googleapis.com/Book&quot;</span>
-    <span class="p">}];</span>
-
-  <span class="c1">// The book to create.</span>
-  <span class="c1">// When using HTTP/JSON, this field is populated based on the HTTP body,</span>
-  <span class="c1">// because of the `body: &quot;book&quot;` syntax.</span>
-  <span class="n">Book</span> <span class="na">book</span> <span class="o">=</span> <span class="mi">2</span> <span class="p">[(</span><span class="n">google.api.field_behavior</span><span class="p">)</span> <span class="o">=</span> <span class="n">REQUIRED</span><span class="p">];</span>
-
-  <span class="c1">// The user-specified ID for the book.</span>
-  <span class="c1">// When using HTTP/JSON, this field is populated based on a query string</span>
-  <span class="c1">// argument, such as `?bookId=foo`. This is the fallback for fields that</span>
-  <span class="c1">// are not included in either the URI or the body.</span>
-  <span class="c1">// Note that clients use camelCase format to communicate the field names</span>
-  <span class="c1">// to the service.</span>
-  <span class="kt">string</span> <span class="na">book_id</span> <span class="o">=</span> <span class="mi">3</span><span class="p">;</span>
-<span class="p">}</span>
-</code></pre></div>
+<p>All Google API interfaces <strong>must</strong> provide a <em>major version number</em>, which is
+encoded at the end of the protobuf package, and included as the first part of
+the URI path for REST APIs. In the event an API needs to make an incompatible
+change, consult <a href="https://aip.dev/180">AIP-180</a> and <a href="https://aip.dev/181">AIP-181</a> for necessary steps based on the
+stability level of the surface in question.</p>
+<p>Note: The use of the term "major version number" above is taken from
+<a href="https://semver.org/">semantic versioning</a>. However, unlike in traditional semantic versioning,
+Google APIs <strong>must not</strong> expose minor or patch version numbers. For
+example, Google APIs use <code>v1</code>, not <code>v1.0</code>, <code>v1.1</code>, or <code>v1.4.2</code>. From a user's
+perspective, major versions are updated in place, and users receive new
+functionality without migration.</p>
+<p>A new major version of an API <strong>must not</strong> depend on a previous major version of
+the same API. An API surface <strong>must not</strong> depend on other APIs, except for in
+the cases outlined in <a href="https://aip.dev/213">AIP-213</a> and <a href="https://aip.dev/215">AIP-215</a>.</p>
+<p>Different versions of the same API <strong>must</strong> be able to work at the same time
+within a single client application for a reasonable transition period. This time
+period allows the client to transition smoothly to the newer version. An older
+version <strong>must</strong> go through a reasonable, well-communicated deprecation period
+before being shut down.</p>
+<p>For releases which have <a href="https://aip.dev/181">alpha or beta stability</a>, APIs <strong>must</strong> append
+the stability level after the major version number in the protobuf package and
+URI path using one of these strategies:</p>
 <ul>
-<li>The first key (<code>post</code> in this example) corresponds to the HTTP method. RPCs
-  <strong>may</strong> use <code>get</code>, <code>post</code>, <code>patch</code>, or <code>delete</code>.<ul>
-<li>RPCs <strong>must</strong> use the prescribed HTTP verb for each standard method, as
-  discussed in <a href="/131">AIP-131</a>, <a href="/132">AIP-132</a>, <a href="/133">AIP-133</a>, <a href="/134">AIP-134</a>, and
-  <a href="/135">AIP-135</a></li>
-<li>RPCs <strong>should</strong> use the prescribed HTTP verb for custom methods, as
-  discussed in <a href="/136">AIP-136</a>.</li>
-<li>RPCs <strong>should not</strong> use <code>put</code> or <code>custom</code>.</li>
+<li>Channel-based versioning (recommended)</li>
+<li>Release-based versioning</li>
+<li>Visibility-based versioning</li>
 </ul>
-</li>
-<li>The corresponding value represents the URI.<ul>
-<li>URIs <strong>must</strong> use the <code>{foo=bar/*}</code> syntax to represent a variable that
-  should be populated in the request proto. When extracting a <a href="/122">resource
-  name</a>, the variable <strong>must</strong> include the entire resource name, not
-  just the ID component.</li>
-<li>URIs <strong>may</strong> use nested fields for their variable names. (Additionally,
-  <a href="/134">AIP-134</a> mandates this for <code>Update</code> requests.)</li>
-<li>URIs <strong>must</strong> use the <code>*</code> character to represent ID components, which
-  matches all URI-safe characters except for <code>/</code>. URIs <strong>may</strong> use <code>**</code> as
-  the final segment of a URI if matching <code>/</code> is required.</li>
-</ul>
-</li>
-<li>The <code>body</code> key defines which single top-level field in the request will be
-  sent as the HTTP body. If the body is <code>*</code>, then this indicates that the
-  request object itself is the HTTP body. The request body is encoded as JSON
-  as defined by protocol buffers' canonical <a href="https://developers.google.com/protocol-buffers/docs/proto3#json">JSON encoding</a>.<ul>
-<li>RPCs <strong>must not</strong> define a <code>body</code> at all for RPCs that use the <code>GET</code> or
-  <code>DELETE</code> HTTP verbs.</li>
-<li>RPCs <strong>must</strong> use the prescribed <code>body</code> for Create (<a href="/133">AIP-133</a>) and Update
-  (<a href="/134">AIP-134</a>) requests.</li>
-<li>RPCs <strong>should</strong> use the prescribed <code>body</code> for custom methods (<a href="/136">AIP-136</a>).</li>
-<li>The <code>body</code> <strong>must not</strong> contain a nested field (or use the <code>.</code> character),</li>
-<li>The <code>body</code> <strong>must not</strong> be the same as a URI parameter.</li>
-<li>The <code>body</code> <strong>must not</strong> be a <code>repeated</code> field.</li>
-<li>Fields <strong>should not</strong> use the <code>json_name</code> annotation to alter the field
-  name in JSON, unless doing so for backwards-compatibility reasons.</li>
-</ul>
-</li>
-</ul>
-<p><strong>Note:</strong> Bi-directional streaming RPCs should not include a <code>google.api.http</code>
-annotation at all. If feasible, the service <strong>should</strong> provide non-streaming
-equivalent RPCs.</p>
-<h3 id="multiple-uri-bindings">Multiple URI bindings</h3>
-<p>Occasionally, an RPC needs to correspond to more than one URI:</p>
-<div class="highlight language-proto"><pre><span></span><code><span class="k">rpc</span> <span class="n">CreateBook</span><span class="p">(</span><span class="n">CreateBookRequest</span><span class="p">)</span> <span class="k">returns</span> <span class="p">(</span><span class="n">Book</span><span class="p">)</span> <span class="p">{</span>
-  <span class="k">option</span> <span class="p">(</span><span class="n">google.api.http</span><span class="p">)</span> <span class="o">=</span> <span class="p">{</span>
-    <span class="n">post</span><span class="o">:</span> <span class="s">&quot;/v1/{parent=publishers/*}/books&quot;</span>
-    <span class="n">body</span><span class="o">:</span> <span class="s">&quot;book&quot;</span>
-    <span class="n">additional_bindings</span><span class="o">:</span> <span class="p">{</span>
-      <span class="n">post</span><span class="o">:</span> <span class="s">&quot;/v1/{parent=authors/*}/books&quot;</span>
-      <span class="n">body</span><span class="o">:</span> <span class="s">&quot;book&quot;</span>
-    <span class="p">}</span>
-    <span class="n">additional_bindings</span><span class="o">:</span> <span class="p">{</span>
-      <span class="n">post</span><span class="o">:</span> <span class="s">&quot;/v1/books&quot;</span>
-      <span class="n">body</span><span class="o">:</span> <span class="s">&quot;book&quot;</span>
-    <span class="p">}</span>
-  <span class="p">};</span>
+<h3 id="channel-based-versioning">Channel-based versioning</h3>
+<p>A <em>stability channel</em> is a long-lived release at a given stability level that
+receives in-place updates. There is no more than one channel per stability level
+for a major version. Under this strategy, there are up to three channels
+available: alpha, beta, and stable.</p>
+<p>The alpha and beta channel <strong>must</strong> have their stability level appended to the
+version, but the stable channel <strong>must not</strong> have the stability level appended.
+For example, <code>v1</code> is an acceptable version for the stable channel, but <code>v1beta</code>
+or <code>v1alpha</code> are not. Similarly, <code>v1beta</code> or <code>v1alpha</code> are acceptable versions
+for the respective beta and alpha channel, but <code>v1</code> is not acceptable for
+either. Each of these channels receives new features and updates "in-place".</p>
+<p>The beta channel's functionality <strong>must</strong> be a superset of the stable channel's
+functionality, and the alpha channel's functionality <strong>must</strong> be a superset of
+the beta channel's functionality.</p>
+<h4 id="deprecating-api-functionality">Deprecating API functionality</h4>
+<p>API elements (fields, messages, RPCs) <strong>may</strong> be marked deprecated in any
+channel to indicate that they should no longer be used:</p>
+<div class="highlight language-proto"><pre><span></span><code><span class="c1">// Represents a scroll. Books are preferred over scrolls.</span>
+<span class="kd">message</span> <span class="nc">Scroll</span> <span class="p">{</span>
+  <span class="k">option</span> <span class="na">deprecated</span> <span class="o">=</span> <span class="kc">true</span><span class="p">;</span>
+
+  <span class="c1">// ...</span>
 <span class="p">}</span>
 </code></pre></div>
-<ul>
-<li>RPCs <strong>may</strong> define any number of additional bindings. The structure is
-  identical to the <code>google.api.http</code> annotation (in fact, it is a recursive
-  reference).</li>
-<li>RPCs <strong>must not</strong> define an additional binding within an additional binding.</li>
-<li>The <code>body</code> clause <strong>must</strong> be identical in the top-level annotation and each
-  additional binding.</li>
-</ul>
-<h2 id="changelog">Changelog</h2>
-<ul>
-<li><strong>2022-08-18</strong>: Added the comment that query string parameter names are
-  in camelCase.</li>
-<li><strong>2021-01-06</strong>: Added clarification around <code>body</code> and nested fields.</li>
-<li><strong>2019-09-23</strong>: Added a statement about request body encoding, and guidance
-  discouraging <code>json_name</code>.</li>
-</ul>
-<!-- prettier-ignore-start -->
-<!-- prettier-ignore-end -->
+<p>Deprecated API functionality <strong>must not</strong> graduate from alpha to beta, nor beta
+to stable. In other words, functionality <strong>must not</strong> arrive "pre-deprecated"
+in any channel.</p>
+<p>The beta channel's functionality <strong>may</strong> be removed after it has been deprecated
+for a sufficient period; we recommend 180 days. For functionality that exists
+only in the alpha channel, deprecation is optional, and functionality <strong>may</strong> be
+removed without notice. If functionality is deprecated in an API's
+alpha channel before removal, the API <strong>should</strong> apply the same annotation, and
+<strong>may</strong> use any timeframe it wishes.</p>
+<h3 id="release-based-versioning">Release-based versioning</h3>
+<p><strong>Important:</strong> This pattern is not commonly used for new services. There are
+existing services that follow it, but Channel-based Versioning is the preferred
+mechanism.</p>
+<p>An <em>individual release</em> is an alpha or beta release that is expected to be
+available for a limited time period before its functionality is incorporated
+into the stable channel, after which the individual release will be shut down.
+When using release-based versioning strategy, an API may have any number of
+individual releases at each stability level.</p>
+<p>Note: Both the channel-based and release-based strategies update the <em>stable</em>
+version in-place. There is a single stable channel, rather than individual
+stable releases, even when using the release-based strategy.</p>
+<p>Alpha and beta releases <strong>must</strong> have their stability level appended to the
+version, followed by an incrementing release number. For example, <code>v1beta1</code> or
+<code>v1alpha5</code>. APIs <strong>should</strong> document the chronological order of these versions
+in their documentation (such as comments).</p>
+<p>Each alpha or beta release <strong>may</strong> be updated in place with backwards-compatible
+changes. For beta releases, backwards-incompatible updates <strong>should</strong> be made by
+incrementing the release number and publishing a new release with the change.
+For example, if the current version is <code>v1beta1</code>, then <code>v1beta2</code> is released
+next.</p>
+<p>Alpha and beta releases <strong>should</strong> be shut down after their functionality
+reaches the stable channel. An alpha release <strong>may</strong> be shut down at any time,
+while a beta release <strong>should</strong> allow users a reasonable transition period; we
+recommend 180 days.</p>
+<h3 id="visibility-based-versioning">Visibility-based versioning</h3>
+<p><a href="https://github.com/googleapis/googleapis/blob/master/google/api/visibility.proto">API visibility</a> is an advanced feature provided by Google API infrastructure.
+It allows API producers to expose multiple external API views from one internal
+API surface, and each view is associated with an API <em>visibility label</em>, such
+as:</p>
+<div class="highlight language-proto"><pre><span></span><code><span class="k">import</span> <span class="s">&quot;google/api/visibility.proto&quot;</span><span class="p">;</span>
+
+<span class="kd">message</span> <span class="nc">Resource</span> <span class="p">{</span>
+  <span class="kt">string</span> <span class="na">name</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span>
+
+  <span class="c1">// Preview. Do not use this feature for production.</span>
+  <span class="kt">string</span> <span class="na">display_name</span> <span class="o">=</span> <span class="mi">2</span>
+    <span class="p">[(</span><span class="n">google.api.field_visibility</span><span class="p">)</span><span class="o">.</span><span class="na">restriction</span> <span class="o">=</span> <span class="s">&quot;PREVIEW&quot;</span><span class="p">];</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>A visibility label is a case-sensitive string that can be used to tag any API
+element. By convention, visibility labels should always use UPPER case.
+An implicit <code>PUBLIC</code> label is applied to all API elements unless an explicit
+visibility label is applied as in the example above.</p>
+<p>Each visibility label is an allow-list. API producers need to grant visibility
+labels to API consumers for them to use API features associated with the labels.
+In other words, an API visibility label is like an ACL'ed API version.</p>
+<p>Multiple visibility labels <strong>may</strong> be applied to an element by using a
+comma-separated string (e.g. <code>"PREVIEW,TRUSTED_TESTER"</code>). When multiple
+visibility labels are used, then the client needs only <em>one</em> of the visibility
+labels (logical <code>OR</code>).</p>
+<p>By default, the visibility labels granted to the API consumer are used to verify
+incoming requests. However, a client can send requests with an explicit
+visibility label as follows:</p>
+<div class="highlight language-None"><pre><span></span><code>GET /v1/projects/my-project/topics HTTP/1.1
+Host: pubsub.googleapis.com
+Authorization: Bearer y29....
+X-Goog-Visibilities: PREVIEW
+</code></pre></div>
+<p>A single API request can specify at most one visibility label.</p>
+<p>API producers can use API visibility for API versioning, such as
+<code>INTERNAL</code> and <code>PREVIEW</code>. A new API feature starts with the <code>INTERNAL</code> label,
+then moves to the <code>PREVIEW</code> label. When the feature is stable and becomes
+generally available, all API visibility labels are removed from the API
+definition.</p>
+<p>In general, API visibility is easier to implement than API versioning for
+incremental changes, but it depends on sophisticated API infrastructure support.
+Google Cloud APIs often use API visibility for Preview features.</p>
   <footer>
   Except as otherwise noted, the content of this page is licensed under the
   <a href="https://creativecommons.org/licenses/by/4.0/">Creative Commons
